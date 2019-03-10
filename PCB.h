@@ -1,34 +1,40 @@
-typedef struct state{
-    
-}
+#include <iostream>
+#include <cmath>
 
-typedef struct registers{
-    
-}
+struct state{
+    int *in_buf;
+    int *out_buf;
+    int *temp_buf;
+};
 
-typedef struct sched{
+struct registers{
+    
+};
+
+struct sched{
     float burst_time;
     float pri;
     float time_slice;
     float remain_time;
-}
+};
 
-typedef struct status{
+struct status{
     bool running;
     bool ready;
     bool blocked;
-    bool new;
-}
+    bool N;
+};
 
-typedef struct PCB{
-    int cpuid: // information the assigned CPU (for multiprocessor system)
-    int program-counter // the job’s pc holds the address of the instruction to fetch
-    struct state: // record of environment that is saved on interrupt
+struct PCB{
+    int process_id;
+    int cpuid; // information the assigned CPU (for multiprocessor system)
+    int program_counter; // the job’s pc holds the address of the instruction to fetch
+    state s; // record of environment that is saved on interrupt
         // including the pc, registers, permissions, buffers, caches, active
         // pages/blocks
-    int code-size; // extracted from the //JOB control line
-    struct registers: // accumulators, index, general
-    struct sched: // burst-time, priority, queue-type, time-slice, remain-time
-    struct status; // {running, ready, blocked, new}
+    int code_size; // extracted from the //JOB control line
+    registers regs; // accumulators, index, general
+    sched sch; // burst-time, priority, queue-type, time-slice, remain-time
+    status stat; // {running, ready, blocked, new}
     int priority; // of the process, extracted from the //JOB control line
-}
+};
