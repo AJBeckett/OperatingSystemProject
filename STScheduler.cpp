@@ -3,6 +3,11 @@
 
 // scheduling 
 using namespace std; 
+PCB proc[];
+       for(int i = 0; i < 30; i++)
+        {
+          rq.pop(proc[i]); 
+        }
 
 
 // Function to sort the Process acc. to priority 
@@ -55,12 +60,7 @@ void findavgTime(PCB proc[], int n)
 void STScheduling(PCB proc[], int n) 
 {   
   Memory a;
-  
-       for(int i = 0; i < 30; i++)
-        {
-          rq.pop(proc[i]); 
-        }
-  
+
     for (int  i = 0 ; i <  n; i++) 
         a.ram = proc[i].process_id; 
         
