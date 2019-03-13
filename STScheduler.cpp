@@ -3,7 +3,8 @@
 
 // scheduling 
 using namespace std; 
-  
+
+
 // Function to sort the Process acc. to priority 
 bool comparison(PCB a, PCB b) 
 { 
@@ -52,12 +53,16 @@ void findavgTime(PCB proc[], int n)
 } 
   
 void STScheduling(PCB proc[], int n) 
-{ 
-    // Sort processes by priority 
+{   
+  Memory a;
   
-    cout<< "Order in which processes gets executed \n"; 
+       for(int i = 0; i < 30; i++)
+        {
+          rq.pop(proc[i]); 
+        }
+  
     for (int  i = 0 ; i <  n; i++) 
-        cout << proc[i].process_id <<" " ; 
+        a.ram = proc[i].process_id; 
         
   
     findavgTime(proc, n);
