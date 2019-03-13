@@ -3,6 +3,8 @@
 #include <PCB.h> //Johnny: Figured we need pcb.h for cpu
 class CPU
 {
+ public:
+ unsigned int processID;
  fetch(){
     
  }
@@ -28,8 +30,8 @@ class CPU
     signal(ComputeOnly);
  }
 
-ComputeOnly()
-{
+ ComputeOnly()
+ {
     while()
     {
         ir : = Fetch(memory[map(PC)]);// fetch instruction at RAM address – mapped PC
