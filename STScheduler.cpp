@@ -1,6 +1,5 @@
 #include <iostream>
 #include <Memory.h>
-#include <PCB.h>
 
 // scheduling 
 using namespace std; 
@@ -55,7 +54,6 @@ void findavgTime(PCB proc[], int n)
 void STScheduling(PCB proc[], int n) 
 { 
     // Sort processes by priority 
-    sort(proc, proc + n, comparison); 
   
     cout<< "Order in which processes gets executed \n"; 
     for (int  i = 0 ; i <  n; i++) 
