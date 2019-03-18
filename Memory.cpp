@@ -1,14 +1,6 @@
-main{
+#include "targetver.h"
+#include <Windows.h>
 
-}
-using namespace std;
+#include "CMemory.h"
 
-class Memory
-{
-public:
-    Memory();
-private:
-    unsigned int disk[2084];
-    unsigned int ram[4096];
 
-};

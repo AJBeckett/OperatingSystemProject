@@ -7,12 +7,11 @@
 
 using namespace std;
 
-int main(){
+void Loader(){
     stringstream str;
     string word;
     bool job = false;
     int x;
-    long h;
     int y = 0;
     int z = 0;
     int count = 0;
@@ -23,11 +22,15 @@ int main(){
         cout << "File failed to open." << endl;
         exit(1);
     }
-    while(reader >> word){
+     while(reader >> word){
+        if(word == "END"){
+            count = 0;
+        }
+        if(word == "//"){
+            ;
+        }
         if(word == "JOB"){
             job = true;
-            z = count;
-            p1.program_counter = z;
             reader >> hex >> x;
             p1.process_id = x;
             reader >> hex >> x;
@@ -35,34 +38,26 @@ int main(){
             reader >> hex >> x;
             p1.priority = x;
         }
-        else if(word == "Data"){
+        if(word == "DATA"){
             job = false;
             reader >> hex >> x;
             p1.s.in_buf = new int[x];
             reader >> hex >> x;
             p1.s.out_buf = new int[x];
             reader >> hex >> x;
-            p1.s.temp_buf = new int[x];
+            p1.s.temp_buf = new int [x];
         }
-        else if(word == "END" || word == "//END"){
-            PCB_arr[y] = p1;
-            y++;
+        if(job == true){
+            reader >> hex >> disk[z];
+            z = z + p1.code_size;
         }
-        else if(word == "//"){
-            
+        if(!job){
+            reader >> hex >> p1.s.in_buf[count];
+            count++;
         }
-        else{
-            if(job == true){
-                
-            }
-            else{
-                 
-            }
-        }
-    }
-    for(int i = 0; i < 30; i++){
-        cout << "This JOB's code_size is : " << PCB_arr[i].code_size << endl;
+        
+        PCB_arr[y] = p1;
+        y++;
     }
     reader.close();
-    return 0;
 }
