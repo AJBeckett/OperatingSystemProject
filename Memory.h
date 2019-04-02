@@ -4,17 +4,26 @@ By Johhny Santana
 #pragma once
 
 #include <stdint.h>
+#include "Windows.h"
+#include "queue"
+#include "PCB.h"
 
 #include <crtdbg.h>
+
+using namespace std;
 
 /*
 	Per specification, a WORD is 4 bytes or 32bits.
 */
+
+// Sample of Memory by Johnny Santana 
 class Memory
 {
 public:
-	DWORD disk[2084];
-	DWORD ram[4096] = {
+	PCB PCB_arr[30];
+	queue <PCB> readyQueue;
+	DWORD disk[4096];
+	DWORD ram[2084]; /* = {
 	#ifdef _DEBUG
 		// JOB ID#, hex # of DWORDS of code, Priority
 		//  Parse Code header, loop # dwords, read into RAM, set PCB Code address and priority
@@ -96,7 +105,7 @@ public:
 		#else
 				0
 		#endif
-	};
+	};*/
 
 	Memory()
 	{

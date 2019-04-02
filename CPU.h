@@ -1,19 +1,20 @@
 /*
-By Johnny Santana Samuel Gardiner, Derick Ehouman, and Alissa Beckett
+By Johnny Santana, Samuel Gardiner, Derick Ehouman, and Alissa Beckett
 */
 #pragma once
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <Memory.h>
-#include "PCB.h" //Johnny: Figured we need pcb.h for cpu
-#include "Memory.h"
+#include "LTS.h"
+
+using namespace std;
 
 class CPU
 {
 private:
+	int count = 0;
 	state	m_State;	// Active context
-	Memory	m_Memory;
+	//Memory	m_Memory.ram;
 	PCB		m_ActiveProcess;
 public:
 	unsigned int processID;
@@ -69,10 +70,10 @@ public:
 		TPrefix11	Prefix11;
 	};
 
-	CPU() : m_State(), m_Memory()
+	/*CPU() : m_State(), m_Memory.ram()
 	{
 
-	}
+	}*/
 
 
 	void AssignProcess(PCB& newProcess)
@@ -82,11 +83,16 @@ public:
 
 	void SwitchProcess(PCB& newProcess)
 	{
+		// Save state into current process
+		//m_ActiveProcess.SaveState(m_State);
+		// Retrieve state of new process
+		//m_State = newProcess.GetState();
 		m_ActiveProcess = newProcess;
 	}
 
 	void SaveContext(state& savedState)
 	{
+		// Make a copy of the active State
 		savedState = m_State;
 	}
 
@@ -97,13 +103,16 @@ public:
 
 	void IncrementProgramCounter()
 	{
-		m_ActiveProcess.program_counter++;
+		//m_ActiveProcess.program_counter++;
+		count++;
 	}
 
 
 	DWORD Fetch() {
 		// Each instruction is 32 bits long
-		DWORD instruction = m_Memory[ProgramCounter() * sizeof(DWORD)];
+		// TO DO:
+		//   Active Process base address in memory?
+		DWORD instruction = m_Memory.ram[ /* Process base address? */ ProgramCounter()+count /** sizeof(DWORD)*/];
 		return instruction;
 	}
 
@@ -118,11 +127,18 @@ public:
 		_ASSERT(registerIndex < 16);
 		m_State.m_Registers[registerIndex] = value;
 	}
-	// Sample of CPU.h by Johnny Santana Samuel Gardiner, Derick Ehouman, and Alissa Beckett
+
+	void WriteMemory(DWORD address, DWORD index)
+	{
+		_ASSERT(index < 16); // 0-15 registers
+		address = m_State.m_Registers[index];
+	}
+
 	void Execute() {
 		do
 		{
 			DWORD instruction = Fetch();
+			// instruction = 0xC10000AC;
 
 			TDecoding decoding;
 			decoding.Instruction = instruction;
@@ -133,39 +149,46 @@ public:
 			{
 			case 0x00: // Instruction is RD, Type is I/O
 			{
+				// 0xC050005C;  11 - 000000 - 0101 - 0000 – 0x005C
+				//			IO – RD – index of destination register (0x05) – ignored index – address of input buffer (0x5C)
+				//      0x000A --> R5
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x03);
-				DWORD address = decoding.Prefix11.Address + m_State.m_Registers[decoding.Prefix11.RegisterIndex1];
-				DWORD data = m_Memory[address];
+				DWORD data = /*m_Memory.ram*/decoding.Prefix11.Address + m_State.m_Registers[decoding.Prefix11.RegisterIndex1];
+				//DWORD accumulatorValue = m_State.m_Registers.Accumulator;
+				// DWORD register1 = decoding.Prefix11.RegisterIndex1;	// Destination register
+
 				SetRegister(decoding.Prefix11.RegisterIndex0, data);
 
-				wprintf_s(L"RD (OpCode: 0x%X) Reg%d <-- 0x%x (Memory[0x%X])\n",
-					decoding.PrefixOpcode.OpCode, decoding.Prefix11.RegisterIndex0, data, address);
+				wprintf_s(L"RD (OpCode: 0x%X) 0x%X into register %d\n",
+					decoding.PrefixOpcode.OpCode, data, decoding.Prefix11.RegisterIndex0);
 				break;
 			}
 			case 0x01: // Instruction is WR, Type is I/O
 			{
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x03);
-				DWORD address = decoding.Prefix11.Address;
+				DWORD address = m_Memory.ram[decoding.Prefix11.Address];
 				DWORD accumulatorValue = m_State.m_Registers.Accumulator;
-				m_Memory[address] = accumulatorValue;
+				m_Memory.ram[address] = accumulatorValue;
 
-				wprintf_s(L"WR (OpCode: 0x%X) Memory[0x%X] = 0x%X from Accumulator\n",
-					decoding.PrefixOpcode.OpCode, address, accumulatorValue);
-	
+				wprintf_s(L"WR (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix11.Address, address, decoding.Prefix11.RegisterIndex0);
+				
 				break;
 			}
 			case 0x02: // Instruction is ST, Type is I
 			{
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x01);
-				//DWORD address = decoding.Prefix01.Address;
+				DWORD address = decoding.Prefix01.Address;
 				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				DWORD destinationRegisterIndex = decoding.Prefix01.DestinationRegisterIndex;
 				DWORD destinationRegister = m_State.m_Registers.ReadRegister(destinationRegisterIndex);
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
-				m_Memory[destinationRegister] = baseRegister;
-
-				wprintf_s(L"ST (OpCode: 0x%X) Memory[0x%X] = 0x%X (from Reg%d)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegister, baseRegister, baseRegisterIndex);
+				//DWORD effectiveAddress = address + baseRegister;
+				//(I am an address in memory)
+				//m_Memory.ram[R13] = R11
+				m_Memory.ram[baseRegister] = destinationRegister;
+				wprintf_s(L"ST (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 
 				break;
 			}
@@ -178,11 +201,11 @@ public:
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
 				DWORD effectiveAddress = address + baseRegister;
 
-				DWORD memoryValue = m_Memory[effectiveAddress];
+				DWORD memoryValue = m_Memory.ram[effectiveAddress];
 				m_State.m_Registers.SetRegister(destinationRegisterIndex, memoryValue);
 
-				wprintf_s(L"LW (OpCode: 0x%X) Reg%d <-- 0x%X from memory[0x%X]\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, memoryValue, effectiveAddress);
+				wprintf_s(L"LW (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.DestinationRegisterIndex, decoding.Prefix01.BaseRegisterIndex);
 				break;
 			}
 			case 0x04: // Instruction MOV, type R
@@ -191,11 +214,10 @@ public:
 				DWORD destinationRegisterIndex = decoding.Prefix00.DestinationRegisterIndex;
 				DWORD sourceRegisterIndex1 = decoding.Prefix00.SourceRegisterIndex1;
 
-				DWORD sourceRegister = m_State.m_Registers.ReadRegister(sourceRegisterIndex1);
-				SetRegister(destinationRegisterIndex, sourceRegister);
+				SetRegister(destinationRegisterIndex, sourceRegisterIndex1);
 
-				wprintf_s(L"MOV (OpCode: 0x%X) Reg%d <-- 0x%X from source register %d\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, sourceRegister, sourceRegisterIndex1);
+				wprintf_s(L"MOV (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix00.Zero, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.DestinationRegisterIndex);
 
 
 				break;
@@ -210,8 +232,8 @@ public:
 				DWORD answer = sourceRegister0 + sourceRegister1;
 				SetRegister(destinationRegisterIndex, answer);
 
-				wprintf_s(L"ADD (OpCode: 0x%X) Reg%d <-- 0x%X (Reg%d + Reg%d)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, answer, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.SourceRegisterIndex0);
+				wprintf_s(L"ADD (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix00.Zero, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.DestinationRegisterIndex);
 
 				break;
 			}
@@ -225,8 +247,8 @@ public:
 				DWORD answer = sourceRegister0 - sourceRegister1;
 				SetRegister(destinationRegisterIndex, answer);
 
-				wprintf_s(L"SUB (OpCode: 0x%X) Reg%d <-- 0x%X (Reg%d - Reg%d)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, answer, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1);
+				wprintf_s(L"SUB (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix00.Zero, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.DestinationRegisterIndex);
 
 				break;
 			}
@@ -240,9 +262,8 @@ public:
 				DWORD answer = sourceRegister0 * sourceRegister1;
 				SetRegister(destinationRegisterIndex, answer);
 
-				wprintf_s(L"MUL (OpCode: 0x%X) Reg%d <-- 0x%X (Reg%d * Reg%d)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, answer, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1);
-
+				wprintf_s(L"MUL (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix00.Zero, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.DestinationRegisterIndex);
 				break;
 			}
 			case 0x08: // Instruction DIV, type R
@@ -255,8 +276,8 @@ public:
 				DWORD answer = sourceRegister0 / sourceRegister1;
 				SetRegister(destinationRegisterIndex, answer);
 
-				wprintf_s(L"DIV (OpCode: 0x%X) Reg%d <-- 0x%X (Reg%d / Reg%d)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, answer, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1);
+				wprintf_s(L"DIV (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix00.Zero, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.DestinationRegisterIndex);
 				break;
 			}
 			case 0x09: // Instruction AND, type R
@@ -269,8 +290,8 @@ public:
 				DWORD answer = sourceRegister0 && sourceRegister1;
 				SetRegister(destinationRegisterIndex, answer);
 
-				wprintf_s(L"AND (OpCode: 0x%X) Reg%d <-- 0x%X (Reg%d && Reg%d)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, answer, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1);
+				wprintf_s(L"AND (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix00.Zero, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.DestinationRegisterIndex);
 				break;
 			}
 			case 0x0A: // Instruction OR, type R
@@ -283,8 +304,8 @@ public:
 				DWORD answer = sourceRegister0 || sourceRegister1;
 				SetRegister(destinationRegisterIndex, answer);
 
-				wprintf_s(L"OR (OpCode: 0x%X) Reg%d <-- 0x%X (Reg%d || Reg%d)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, answer, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1);
+				wprintf_s(L"OR (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix00.Zero, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.DestinationRegisterIndex);
 				break;
 			}
 			case 0x0B: // Instruction MOVI, type I
@@ -292,39 +313,42 @@ public:
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x01);
 				DWORD address = decoding.Prefix01.Address;
 				DWORD destinationRegisterIndex = decoding.Prefix01.DestinationRegisterIndex;
+				// move immediate data (address) into register
 				SetRegister(destinationRegisterIndex, address);
 
-				wprintf_s(L"MOVI (OpCode: 0x%X) Reg%d <-- 0x%X\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, address);
+				wprintf_s(L"MOVI (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 				break;
 			}
 			case 0x0C: // Instruction ADDI, type I
 			{
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x01);
 				DWORD address = decoding.Prefix01.Address;
+				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				DWORD destinationRegisterIndex = decoding.Prefix01.DestinationRegisterIndex;
 				DWORD destinationRegister = m_State.m_Registers.ReadRegister(destinationRegisterIndex);
 
 				DWORD addValue = address + destinationRegister;
 
-				wprintf_s(L"ADDI (OpCode: 0x%X) Reg%d <-- 0x%X (Address:0x%X + 0x%X)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, addValue, address, destinationRegister);
-
 				SetRegister(destinationRegisterIndex, addValue);
+
+				wprintf_s(L"ADDI (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
+
 				break;
 			}
 			case 0x0D: // Instruction MULI, type I
 			{
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x01);
 				DWORD address = decoding.Prefix01.Address;
+				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				DWORD destinationRegisterIndex = decoding.Prefix01.DestinationRegisterIndex;
-				DWORD destinationRegister = m_State.m_Registers.ReadRegister(destinationRegisterIndex);
-				DWORD multiValue = address * destinationRegister;
-
-				wprintf_s(L"MULI (OpCode: 0x%X) Reg%d <-- 0x%X (Address:0x%X + 0x%X)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, multiValue, address, destinationRegister);
+				DWORD multiValue = address * destinationRegisterIndex;
 
 				SetRegister(destinationRegisterIndex, multiValue);
+
+				wprintf_s(L"MULTI (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 
 				break;
 			}
@@ -333,14 +357,12 @@ public:
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x01);
 				DWORD address = decoding.Prefix01.Address;
 				DWORD destinationRegisterIndex = decoding.Prefix01.DestinationRegisterIndex;
-				DWORD destinationRegister = m_State.m_Registers.ReadRegister(destinationRegisterIndex);
 				DWORD divValue = address / destinationRegisterIndex;
-
-				wprintf_s(L"DIVI (OpCode: 0x%X) Reg%d <-- 0x%X (Address:0x%X + 0x%X)\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, divValue, address, destinationRegister);
 
 				SetRegister(destinationRegisterIndex, divValue);
 
+				wprintf_s(L"DIVI (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 				break;
 			}
 			case 0x0F: // Instruction LDI, type I
@@ -351,8 +373,8 @@ public:
 				
 				SetRegister(destinationRegisterIndex, address);
 
-				wprintf_s(L"LDI (OpCode: 0x%X) Reg%d <-- 0x%X\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, address);
+				wprintf_s(L"LDI (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 				break;
 			}
 			case 0x10: // Instruction SLT, type R
@@ -362,15 +384,13 @@ public:
 				DWORD sourceRegister1 = m_State.m_Registers[decoding.Prefix00.SourceRegisterIndex1];
 				DWORD sourceRegister0 = m_State.m_Registers[decoding.Prefix00.SourceRegisterIndex0];
 
-				DWORD value = 0;
-				if(sourceRegister0 < sourceRegister1)
-					value = 1;
+				if (sourceRegister0 < sourceRegister1)
+					SetRegister(destinationRegisterIndex, 1);
+				else
+					SetRegister(destinationRegisterIndex, 0);
 
-				SetRegister(destinationRegisterIndex, value);
-
-				wprintf_s(L"SLT (OpCode: 0x%X) Reg%d <-- 0x%X\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, value);
-
+				wprintf_s(L"SLT (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix00.Zero, decoding.Prefix00.SourceRegisterIndex0, decoding.Prefix00.SourceRegisterIndex1, decoding.Prefix00.DestinationRegisterIndex);
 
 				break;
 			}
@@ -382,22 +402,19 @@ public:
 				DWORD destinationRegisterIndex = decoding.Prefix01.DestinationRegisterIndex;
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
 
-				DWORD value = 0;
-				if(baseRegister < address)
-					value = 1;
+				if (baseRegister < address)
+					SetRegister(destinationRegisterIndex, 1);
+				else
+					SetRegister(destinationRegisterIndex, 0);
 
-				SetRegister(destinationRegisterIndex, value);
-
-				wprintf_s(L"SLTI (OpCode: 0x%X) Reg%d <-- 0x%X\n",
-					decoding.PrefixOpcode.OpCode, destinationRegisterIndex, value);
-
+				wprintf_s(L"SLTI (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 				break;
 			}
 			case 0x12: // Instruction HLT, type J
 			{
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x02);
-				wprintf_s(L"HLT (OpCode: 0x%X)\n",
-					decoding.PrefixOpcode.OpCode);
+
 				goto HALT;
 
 				break;
@@ -405,8 +422,6 @@ public:
 			case 0x13: // Instruction NOP, no type
 			{
 				//no operation
-				wprintf_s(L"NOP (OpCode: 0x%X)\n",
-					decoding.PrefixOpcode.OpCode);
 				break;
 			}
 			case 0x14: // Instruction JMP, type J
@@ -414,8 +429,7 @@ public:
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x02);
 				DWORD address = decoding.Prefix10.Address;
 				m_ActiveProcess.program_counter = address;
-				wprintf_s(L"JMP (OpCode: 0x%X)  program_counter <== 0x%X\n",
-					decoding.PrefixOpcode.OpCode, address);
+
 				break;
 			}
 			case 0x15: // Instruction BEQ, type I
@@ -427,12 +441,12 @@ public:
 				DWORD destinationRegister = m_State.m_Registers.ReadRegister(destinationRegisterIndex);
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
 
-				if(baseRegister == destinationRegister)
-				{
-					wprintf_s(L"BEQ (OpCode: 0x%X)  program_counter <== 0x%X\n",
-						decoding.PrefixOpcode.OpCode, address);
-					m_ActiveProcess.program_counter = address / 4;
-				}
+				if (baseRegister == destinationRegister)
+					m_ActiveProcess.program_counter = address/4;
+
+				wprintf_s(L"BEQ (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
+
 				break;
 			}
 			case 0x16: // Instruction BNE ,type I
@@ -444,12 +458,11 @@ public:
 				DWORD destinationRegister = m_State.m_Registers.ReadRegister(destinationRegisterIndex);
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
 
-				if (baseRegister != destinationRegister)
-				{
-					wprintf_s(L"BNE (OpCode: 0x%X)  program_counter <== 0x%X\n",
-						decoding.PrefixOpcode.OpCode, address);
+				if (baseRegister != destinationRegister) {
+					count = address/4;
 
-					m_ActiveProcess.program_counter = address/4;
+					wprintf_s(L"BNE (OpCode: 0x%X) 0x%X (0x%x) != %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 				}
 				break;
 			}
@@ -460,13 +473,11 @@ public:
 				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
 
-				if(baseRegister == 0)
-				{
-					wprintf_s(L"BEZ (OpCode: 0x%X)  program_counter <== 0x%X\n",
-						decoding.PrefixOpcode.OpCode, address);
-					m_ActiveProcess.program_counter = address / 4;
-				}
-				
+				if (baseRegister == 0)
+					m_ActiveProcess.program_counter = address/4;
+
+				wprintf_s(L"BEZ (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 				break;
 			}
 			case 0x18: // Instruction BNZ, type I
@@ -476,13 +487,11 @@ public:
 				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
 
-				if(baseRegister != 0)
-				{
-					wprintf_s(L"BNZ (OpCode: 0x%X)  program_counter <== 0x%X\n",
-						decoding.PrefixOpcode.OpCode, address);
-					m_ActiveProcess.program_counter = address / 4;
-				}
-				
+				if (baseRegister != 0)
+					m_ActiveProcess.program_counter = address/4;
+
+				wprintf_s(L"BNZ (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 				break;
 			}
 			case 0x19: // Instruction BGZ, type I
@@ -492,13 +501,11 @@ public:
 				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
 
-				if(baseRegister > 0)
-				{
-					wprintf_s(L"BGZ (OpCode: 0x%X)  program_counter <== 0x%X\n",
-						decoding.PrefixOpcode.OpCode, address);
-					m_ActiveProcess.program_counter = address / 4;
-				}
-				
+				if (baseRegister > 0)
+					m_ActiveProcess.program_counter = address/4;
+
+				wprintf_s(L"BGZ (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
 				break;
 			}
 			case 0x1A: // Instruction BLZ, type I
@@ -508,13 +515,12 @@ public:
 				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				int baseRegister = (int)m_State.m_Registers.ReadRegister(baseRegisterIndex);
 
-				if(baseRegister < 0)
-				{
-					wprintf_s(L"BLZ (OpCode: 0x%X)  program_counter <== 0x%X\n",
-						decoding.PrefixOpcode.OpCode, address);
-					m_ActiveProcess.program_counter = address / 4;
-				}
-				
+				if (baseRegister < 0)
+					m_ActiveProcess.program_counter = address/4;
+
+				wprintf_s(L"BLZ (OpCode: 0x%X) 0x%X (0x%x) into register %d\n",
+					decoding.PrefixOpcode.OpCode, decoding.Prefix01.Address, decoding.Prefix01.BaseRegisterIndex, decoding.Prefix01.DestinationRegisterIndex);
+				break;
 			}
 			};
 

@@ -1,8 +1,7 @@
 #pragma once
 
 #include "OperatingSystemDemo.h"
-#include <C:\Users\aliss\Downloads\OperatingSystemDemo\OperatingSystemDemo\PCB.h>
-#include <C:\Users\aliss\Downloads\OperatingSystemDemo\OperatingSystemDemo\CPU.h>
+#include "CPU.h"
 
 #include <array>
 
@@ -145,15 +144,16 @@ namespace OperatingSystem
 	class CMemory
 	{
 	private:
-		std::array<BYTE, 4096> m_PhysicalDisk = { 0 };  // disk is 1024 DWORDs or 4k
-		std::array<DWORD, 2048> m_PhysicalRam = { 0 };  // RAM is 2048 DWORDS or 8k
+		//std::array<BYTE, 4096> m_Memory.disk = { 0 };  // disk is 1024 DWORDs or 4k
+		//std::array<DWORD, 2048> m_Memory.ram = { 0 };  // RAM is 2048 DWORDS or 8k
 
 	public:
 		CMemory()
 		{
-#pragma region Initialization of Physical Ram for Debug mode Testing
+/*#pragma region Initialization of Physical Ram for Debug mode Testing
+			
 #ifdef _DEBUG
-			m_PhysicalRam =
+			m_Memory.ram =
 			{
 				// JOB ID#, hex # of DWORDS of code, Priority
 				//  Parse Code header, loop # dwords, read into RAM, set PCB Code address and priority
@@ -234,7 +234,7 @@ namespace OperatingSystem
 					// END
 			};
 #endif
-#pragma endregion
+#pragma endregion*/
 
 		}
 
@@ -247,7 +247,7 @@ namespace OperatingSystem
 
 			// physical address converted to DWORD - can't read BYTES or WORDS from memory directly
 			ULONG offset = address / 4;
-			return m_PhysicalRam[offset];
+			return m_Memory.ram[offset];
 		}
 
 	};

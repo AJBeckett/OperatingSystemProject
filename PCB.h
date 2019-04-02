@@ -1,5 +1,6 @@
 /*
 By Samuel Gardiner and Alissa Beckett
+
 */
 #pragma once
 
@@ -7,7 +8,7 @@ By Samuel Gardiner and Alissa Beckett
 #include <cmath>
 #include <string>
 
-#pragma warning(disable: 4201)
+using namespace std;
 
 struct registers {
 	// Registers are only 32 bits wide
@@ -72,9 +73,9 @@ struct registers {
 };
 
 struct state {
-	int *in_buf;
-	int *out_buf;
-	int *temp_buf;
+	int in_buf;
+	int out_buf;
+	int temp_buf;
 
 	registers m_Registers;
 };
@@ -93,6 +94,7 @@ struct status {
 	bool N;
 };
 
+//Sample of PCB.h by Samuel Gardiner and Alissa Beckett
 struct PCB {
 	int process_id;
 	int cpuid; // information the assigned CPU (for multiprocessor system)
@@ -129,5 +131,4 @@ struct PCB {
 		}
 		return *this;
 	}
-
 };
