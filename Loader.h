@@ -26,18 +26,22 @@ namespace Loader {
 		PCB p1;
 		ifstream reader;
 		reader.open("ProgramFile.txt");
+		//reader.open("Program4.txt");
 		if (!reader) {
 			cout << "File failed to open." << endl;
 			exit(1);
 		}
+
+		DWORD baseAddress = 0;
+		DWORD dataSize = 0;
+
 		// sample of Loader.h By Samuel Gardiner and Johnny Santana
-		while (reader >> word) {
-			if (word == "JOB") {
-				programCount = memoryCount-1;
-				p1.program_counter = programCount;
-				if (p1.program_counter == 1) {
-					p1.program_counter = 0;
-				}
+		while (reader >> word) 
+		{
+			if (word == "JOB") 
+			{
+				p1.program_counter = 0; // ALWAYS ZERO
+
 				reader >> hex >> currentValue;
 				p1.process_id = currentValue;
 				reader >> hex >> currentValue;
@@ -46,11 +50,12 @@ namespace Loader {
 				p1.priority = currentValue;
 				for (int i = 0; i < p1.code_size; i++) {
 					reader >> instruction;
-					m_Memory.disk[i+programCount] = instruction;
+					m_Memory.disk[i + baseAddress] = instruction;
 					memoryCount++;
 				}
 			}
-			else if (word == "Data") {
+			else if (word == "Data") 
+			{
 				programCount = memoryCount-1;
 				reader >> hex >> currentValue;
 				p1.s.in_buf = currentValue;
@@ -58,16 +63,23 @@ namespace Loader {
 				p1.s.out_buf = currentValue;
 				reader >> hex >> currentValue;
 				p1.s.temp_buf = currentValue;
-				for (int i = 0; i < 44; i++) {
+				// Data size is in_buf + out_buf + temp_buf
+				// 14 + C + C (20 + 12 + 12)
+				dataSize = p1.s.in_buf + p1.s.out_buf + p1.s.temp_buf;
+				for (int i = 0; i < dataSize; i++) {
 					reader >> instruction;
-					m_Memory.disk[i + programCount] = instruction;
+					m_Memory.disk[i + baseAddress + p1.code_size] = instruction;
 					memoryCount++;
 				}
 			}
-			else if (word == "END" || word == "//END") {
+			else if (word == "END" || word == "//END") 
+			{
+				p1.BaseAddress = baseAddress;
 				m_Memory.PCB_arr[currentProcess] = p1;
 				currentProcess++;
+				baseAddress = baseAddress + p1.code_size + dataSize;
 			}
+
 			else {
 				
 			}

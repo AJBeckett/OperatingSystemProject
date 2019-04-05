@@ -102,9 +102,10 @@ struct PCB {
 	state s; // record of environment that is saved on interrupt
 		// including the pc, registers, permissions, buffers, caches, active
 		// pages/blocks
+	DWORD BaseAddress;
 	int code_size; // extracted from the //JOB control line
 	registers regs; // accumulators, index, general
-	sched sch; // burst-time, priority, queue-type, time-slice, remain-time
+	sched sch; // burst-time, program_Counter, queue-type, time-slice, remain-time
 	status stat; // {running, ready, blocked, new}
 	int priority; // of the process, extracted from the //JOB control line
 
@@ -124,6 +125,7 @@ struct PCB {
 			program_counter = source.program_counter;
 			s = source.s;
 			code_size = source.code_size;
+			BaseAddress = source.BaseAddress;
 			regs = source.regs;
 			sch = source.sch;
 			stat = source.stat;
