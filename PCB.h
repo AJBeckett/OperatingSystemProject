@@ -72,6 +72,13 @@ struct registers {
 
 };
 
+struct page {
+	DWORD word1;
+	DWORD word2;
+	DWORD word3;
+	DWORD word4;
+};
+
 struct state {
 	int in_buf;
 	int out_buf;

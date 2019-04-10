@@ -27,5 +27,8 @@ namespace STS {
 				m_Memory[i*4] = m_Memory.disk[i];
 			}
 		}
+		for (int i = 0; i < 30; i++) {
+			m_Memory.readyQueue.push(m_Memory.PCB_arr[i]);
+		}
 	}
 }

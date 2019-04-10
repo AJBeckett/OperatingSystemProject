@@ -96,6 +96,12 @@ public:
 		savedState = m_State;
 	}
 
+	void LoadContext(state& savedState)
+	{
+		//Loads assigned process' state into the cpu
+		m_State = savedState;
+	}
+
 	DWORD ProgramCounter()
 	{
 		//return initialCount;
@@ -158,13 +164,23 @@ public:
 				//			IO – RD – index of destination register (0x05) – ignored index – address of input buffer (0x5C)
 				//      0x000A --> R5
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x03);
-				DWORD address = decoding.Prefix11.Address + process.BaseAddress * 4;
-				DWORD data = m_Memory[address];
+				DWORD address;
+				DWORD data;
+				if (decoding.Prefix11.Address != 0) {
+					address = decoding.Prefix11.Address + process.BaseAddress * 4;
+					data = m_Memory[address];
+				}
+				else {
+					address = m_State.m_Registers.ReadRegister(decoding.Prefix11.RegisterIndex1) + process.BaseAddress * 4;
+					data = m_Memory[address];
+				}
 
 				SetRegister(decoding.Prefix11.RegisterIndex0, data);;
 
 				wprintf_s(L"RD (OpCode: 0x%X) 0x%X into register %d\n",
 					decoding.PrefixOpcode.OpCode, data, decoding.Prefix11.RegisterIndex0);
+
+				
 				break;
 			}
 			case 0x01: // Instruction is WR, Type is I/O
@@ -181,6 +197,7 @@ public:
 					address,
 					accumulatorValue,
 					decoding.Prefix11.RegisterIndex0);
+
 				break;
 			}
 			case 0x02: // Instruction is ST, Type is I
@@ -212,25 +229,25 @@ public:
 				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				DWORD destinationRegisterIndex = decoding.Prefix01.DestinationRegisterIndex;
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
-				DWORD effectiveAddress = address + baseRegister;
+				//DWORD effectiveAddress = address + baseRegister;
 
-				DWORD memoryValue = m_Memory[effectiveAddress];
-				m_State.m_Registers.SetRegister(destinationRegisterIndex, memoryValue);
+				//DWORD memoryValue = m_Memory[effectiveAddress];
+				m_State.m_Registers.SetRegister(destinationRegisterIndex, m_Memory[baseRegister + process.BaseAddress * 4]);
 
 				wprintf_s(L"LW (OpCode: 0x%X) Content of Address 0x%X (0x%X) into reg%d\n",
-					decoding.PrefixOpcode.OpCode, address, memoryValue, decoding.Prefix01.DestinationRegisterIndex);
+					decoding.PrefixOpcode.OpCode, baseRegisterIndex, baseRegister, decoding.Prefix01.DestinationRegisterIndex);
 				break;
 			}
 			case 0x04: // Instruction MOV, type R
 			{
 				_ASSERT(decoding.PrefixOpcode.Prefix == 0x00);
-				DWORD destinationRegisterIndex = decoding.Prefix00.DestinationRegisterIndex;
+				DWORD destinationRegisterIndex = decoding.Prefix00.SourceRegisterIndex0;
 				DWORD sourceRegisterIndex1 = decoding.Prefix00.SourceRegisterIndex1;
 
-				SetRegister(destinationRegisterIndex, sourceRegisterIndex1);
+				SetRegister(destinationRegisterIndex, m_State.m_Registers.ReadRegister(sourceRegisterIndex1));
 
 				wprintf_s(L"MOV (OpCode: 0x%X) Content of reg%d: (0x%X) moved to reg%d\n",
-					decoding.PrefixOpcode.OpCode, sourceRegisterIndex1, m_State.m_Registers.ReadRegister(sourceRegisterIndex1), decoding.Prefix00.DestinationRegisterIndex);
+					decoding.PrefixOpcode.OpCode, sourceRegisterIndex1, m_State.m_Registers.ReadRegister(sourceRegisterIndex1), decoding.Prefix00.SourceRegisterIndex0);
 
 
 				break;
@@ -248,9 +265,9 @@ public:
 				wprintf_s(L"ADD (OpCode: 0x%X) Content of Reg%d: (0x%X) added to Content of Reg%d: (0x%X) into reg%d: (0x%X)\n",
 					decoding.PrefixOpcode.OpCode,
 					decoding.Prefix00.SourceRegisterIndex0,
-					sourceRegister1,
-					decoding.Prefix00.SourceRegisterIndex1,
 					sourceRegister0,
+					decoding.Prefix00.SourceRegisterIndex1,
+					sourceRegister1,
 					decoding.Prefix00.DestinationRegisterIndex,
 					answer);
 

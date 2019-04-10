@@ -13,13 +13,13 @@ namespace LTS{
 		PCB p;
 		int pri = 100;
 		for (int i = 0; i < 30; i++) {
-			pri = m_Memory.PCB_arr[i].process_id;
+			pri = m_Memory.PCB_arr[i].code_size;
 			for (int j = i; j < 30; j++) {
-				if (m_Memory.PCB_arr[j].process_id < pri) {
+				if (m_Memory.PCB_arr[j].code_size < pri) {
 					p = m_Memory.PCB_arr[j];
 					m_Memory.PCB_arr[j] = m_Memory.PCB_arr[i];
 					m_Memory.PCB_arr[i] = p;
-					pri = p.process_id;
+					pri = p.code_size;
 				}
 			}
 		}
