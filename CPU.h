@@ -93,6 +93,10 @@ public:
 	void SaveContext(state& savedState)
 	{
 		// Make a copy of the active State
+		PCB newProcess = m_ActiveProcess;
+		newProcess.s = m_State;
+		newProcess.program_counter = ProgramCounter();
+		m_ActiveProcess = newProcess;
 		savedState = m_State;
 	}
 
@@ -119,7 +123,8 @@ public:
 		// Each instruction is 32 bits long
 		// TO DO:
 		//   Active Process base address in memory?
-		DWORD& instruction = m_Memory[(m_ActiveProcess.BaseAddress + m_ActiveProcess.program_counter) * sizeof(DWORD)];
+		
+		DWORD instruction = m_Memory.MMU(m_ActiveProcess.BaseAddress+ProgramCounter());
 		return instruction;
 	}
 
@@ -141,13 +146,30 @@ public:
 		address = m_State.m_Registers[index];
 	}
 
+	void PageFault(int address) {
+		SaveContext(m_ActiveProcess.s);
+		m_Memory.waitQueue.push(m_ActiveProcess);
+		for (int i = 0; i < 131; i++) {
+			if (m_Memory[i * 4].valid == false) {
+				m_Memory[i * 4] = m_Memory.disk[address];
+				m_Memory[i * 4].valid = true;
+				m_Memory.pageTable[address] = i * 4;
+				i = 131;
+			}
+		}
+		//Bring into RAM the new page
+	}
+
 	void Execute(PCB process) 
 	{
 		AssignProcess(process);
 
 		do
 		{
-			
+			if (m_Memory.pageTable[(m_ActiveProcess.BaseAddress+ProgramCounter()) / 4] == -1) {
+				PageFault((m_ActiveProcess.BaseAddress + ProgramCounter())/4);
+				goto HALT;
+			}
 			DWORD instruction = Fetch();
 			// instruction = 0xC10000AC;
 
@@ -168,11 +190,22 @@ public:
 				DWORD data;
 				if (decoding.Prefix11.Address != 0) {
 					address = decoding.Prefix11.Address + process.BaseAddress * 4;
-					data = m_Memory[address];
+					if (m_Memory.pageTable[address/4] == -1) {
+						m_ActiveProcess.program_counter--;
+						PageFault(address/4);
+						goto HALT;
+					}
+					cout << m_Memory.disk[address / 4].pageArr[address%4] << endl;
+					data = m_Memory.MMU(address);
 				}
 				else {
 					address = m_State.m_Registers.ReadRegister(decoding.Prefix11.RegisterIndex1) + process.BaseAddress * 4;
-					data = m_Memory[address];
+					if (m_Memory.pageTable[address / 4] == -1) {
+						m_ActiveProcess.program_counter--;
+						PageFault(address /4);
+						goto HALT;
+					}
+					data = m_Memory.MMU(address);
 				}
 
 				SetRegister(decoding.Prefix11.RegisterIndex0, data);;
@@ -190,7 +223,13 @@ public:
 				DWORD accumulatorValue = m_State.m_Registers.Accumulator;
 				DWORD register1 = decoding.Prefix11.RegisterIndex1;
 				
-				m_Memory[address] = accumulatorValue;
+				if (m_Memory.pageTable[address / 4] == -1) {
+					m_ActiveProcess.program_counter--;
+					PageFault(address/4);
+					goto HALT;
+				}
+
+				m_Memory.MMU(address) = accumulatorValue;
 
 				wprintf_s(L"WR (OpCode: 0x%X) RAM[0x%X] <-- 0x%x (Reg%d)\n",
 					decoding.PrefixOpcode.OpCode,
@@ -211,7 +250,13 @@ public:
 				DWORD address = decoding.Prefix01.Address + destinationRegister + process.BaseAddress * 4;
 				//(I am an address in memory)
 				//m_Memory.ram[R13] = R11
-				m_Memory[address] = baseRegister;
+				if (m_Memory.pageTable[address / 4] == -1) {
+					m_ActiveProcess.program_counter--;
+					PageFault(address/4);
+					goto HALT;
+				}
+
+				m_Memory.MMU(address) = baseRegister;
 
 				//destinationRegister = effectiveAddress;
 
@@ -229,10 +274,17 @@ public:
 				DWORD baseRegisterIndex = decoding.Prefix01.BaseRegisterIndex;
 				DWORD destinationRegisterIndex = decoding.Prefix01.DestinationRegisterIndex;
 				DWORD baseRegister = m_State.m_Registers.ReadRegister(baseRegisterIndex);
-				//DWORD effectiveAddress = address + baseRegister;
+				DWORD effectiveAddress = address + baseRegister;
 
-				//DWORD memoryValue = m_Memory[effectiveAddress];
-				m_State.m_Registers.SetRegister(destinationRegisterIndex, m_Memory[baseRegister + process.BaseAddress * 4]);
+				if (m_Memory.pageTable[effectiveAddress/4] == -1 || m_Memory.pageTable[(baseRegister + process.BaseAddress)/4] == -1) {
+					m_ActiveProcess.program_counter--;
+					PageFault(effectiveAddress/4);
+					PageFault((baseRegister + process.BaseAddress) / 4);
+					goto HALT;
+				}
+				
+				DWORD memoryValue = m_Memory.MMU(effectiveAddress);
+				m_State.m_Registers.SetRegister(destinationRegisterIndex, m_Memory.MMU(baseRegister + process.BaseAddress * 4));
 
 				wprintf_s(L"LW (OpCode: 0x%X) Content of Address 0x%X (0x%X) into reg%d\n",
 					decoding.PrefixOpcode.OpCode, baseRegisterIndex, baseRegister, decoding.Prefix01.DestinationRegisterIndex);

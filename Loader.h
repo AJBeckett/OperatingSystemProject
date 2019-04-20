@@ -14,6 +14,9 @@ using namespace std;
 namespace Loader {
 	Memory m_Memory;
 	void Loader() {
+		for (int i = 0; i < 1024; i++) {
+			m_Memory.pageTable[i] = -1;
+		}
 		stringstream str;
 		string word;
 		DWORD instruction;
@@ -50,7 +53,7 @@ namespace Loader {
 				p1.priority = currentValue;
 				for (int i = 0; i < p1.code_size; i++) {
 					reader >> instruction;
-					m_Memory.disk[i + baseAddress] = instruction;
+					m_Memory.disk[(i + baseAddress) / 4].pageArr[(i+baseAddress)%4] = instruction;
 					memoryCount++;
 				}
 			}
@@ -68,7 +71,7 @@ namespace Loader {
 				dataSize = p1.s.in_buf + p1.s.out_buf + p1.s.temp_buf;
 				for (int i = 0; i < dataSize; i++) {
 					reader >> instruction;
-					m_Memory.disk[i + baseAddress + p1.code_size] = instruction;
+					m_Memory.disk[(i + baseAddress + p1.code_size) /4].pageArr[(i+baseAddress+p1.code_size)%4] = instruction;
 					memoryCount++;
 				}
 			}

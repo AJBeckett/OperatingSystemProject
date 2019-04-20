@@ -20,35 +20,46 @@ using namespace std;
 class Memory
 {
 private:
-	DWORD ram[2084]; 
+	page ram[521]; 
 
 public:
 	PCB PCB_arr[30];
 	queue <PCB> readyQueue;
-	DWORD disk[4096];
+	queue <PCB> waitQueue;
+	page disk[1024];
+	int pageTable[1024];
 	
+	DWORD& MMU(int address) {
+		int p = address / 4;
+		int d = address % 4;
+		int f = pageTable[p];
+		
+		return ram[f].pageArr[d];
+	}
 
 	Memory()
 	{
 
 	}
 
-	DWORD memory(DWORD address)
+	page memory(DWORD address)
 	{
-		_ASSERT(address < 1024);
+		_ASSERT(address < 256);
 
 		// Address comes in as a byte offset
 		//  convert to WORD offset
-		DWORD offset = address / 4;
-		return ram[offset];
+		DWORD p = address / 4;
+		
+		return ram[p];
 	}
 
-	DWORD& operator[](DWORD address)
+	page& operator[](DWORD address)
 	{
-		_ASSERT(address < 2048*sizeof(DWORD));
+		_ASSERT(address < 521*sizeof(DWORD));
 
+		DWORD p = address / 4;
 		//OFFSET BASED ON BASEADDRESS FOR ACTIVE PCB
-		return ram[address / 4];
+		return ram[p];
 	}
 
 };

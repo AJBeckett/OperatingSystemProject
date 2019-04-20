@@ -73,10 +73,8 @@ struct registers {
 };
 
 struct page {
-	DWORD word1;
-	DWORD word2;
-	DWORD word3;
-	DWORD word4;
+	DWORD pageArr[4];
+	boolean valid = false;
 };
 
 struct state {
