@@ -28,7 +28,7 @@ namespace Loader {
 		int currentValue, currentProcess = 0, programCount = 0, memoryCount = 1;
 		PCB p1;
 		ifstream reader;
-		reader.open("C:\\Users\\Sam\\Downloads\\C++Projects\\OperatingSystemProject-master\\ProgramFile.txt");
+		reader.open("C:\\Users\\Derick\\source\\repos\\OperatingSystemProject-Phase-2\\ProgramFile.txt");
 		//reader.open("Program4.txt");
 		if (!reader) {
 			cout << "File failed to open." << endl;
