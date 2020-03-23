@@ -11,20 +11,21 @@ using namespace std;
 using namespace Loader;
 
 namespace STS {
-	PCB arr[30];
 	void STScheduling()
 	{
+		int count = 0;
+		PCB current;
 		while (!m_Memory.readyQueue.empty()) {
 			PCB current;
-			int count = 0;
 			current = m_Memory.readyQueue.front();
 			//cout << current.program_counter << endl;
-			arr[count] = current;
-			count++;
 			m_Memory.readyQueue.pop();
 			// WHY NOT COPY ALL THE DATA BUFFERS?
-			for (int i = current.program_counter; i < current.BaseAddress + current.code_size + current.s.in_buf; i++){ 
-				m_Memory[i*4] = m_Memory.disk[i];
+			for (int i = current.BaseAddress; i < current.BaseAddress + 16; i = i+4){
+				m_Memory[count*4] = m_Memory.disk[i/4];
+				m_Memory[count * 4].valid = true;
+				m_Memory.pageTable[i / 4] = count;
+				count++;
 			}
 		}
 		for (int i = 0; i < 30; i++) {

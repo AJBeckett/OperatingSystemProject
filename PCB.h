@@ -73,10 +73,8 @@ struct registers {
 };
 
 struct page {
-	DWORD word1;
-	DWORD word2;
-	DWORD word3;
-	DWORD word4;
+	DWORD pageArr[4];
+	boolean valid = false;
 };
 
 struct state {
@@ -85,6 +83,12 @@ struct state {
 	int temp_buf;
 
 	registers m_Registers;
+};
+
+struct TStats
+{
+	clock_t Start;
+	clock_t End;
 };
 
 struct sched {
@@ -116,11 +120,10 @@ struct PCB {
 	status stat; // {running, ready, blocked, new}
 	int priority; // of the process, extracted from the //JOB control line
 
-	PCB() : process_id(0), cpuid(0), program_counter(0), s(), code_size(0), regs(), sch(), stat(), priority(0)
+	PCB() : process_id(0), cpuid(0), program_counter(0), s(), code_size(0), 
+		regs(), sch(), stat(), priority(0)
 	{
-		// TO DO:  read and initialize a PCB correctly
-		//  NEW pcb would have program_counter of ZERO and a base address in memory
-		//  How is this machine going to handle that?
+		
 	}
 
 	PCB& operator =(const PCB& source)
